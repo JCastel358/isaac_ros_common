@@ -234,6 +234,9 @@ DOCKER_ARGS+=("-e ROS_DOMAIN_ID")
 DOCKER_ARGS+=("-e USER")
 DOCKER_ARGS+=("-e ISAAC_ROS_WS=/workspaces/isaac_ros-dev")
 
+# Add permission for ttyUSB0
+DOCKER_ARGS+=("--device=/dev/ttyUSB0")
+
 if [[ $PLATFORM == "aarch64" ]]; then
     DOCKER_ARGS+=("-v /usr/bin/tegrastats:/usr/bin/tegrastats")
     DOCKER_ARGS+=("-v /tmp/:/tmp/")
@@ -282,6 +285,7 @@ docker run -it --rm \
     ${DOCKER_ARGS[@]} \
     -v $ISAAC_ROS_DEV_DIR:/workspaces/isaac_ros-dev \
     -v /etc/localtime:/etc/localtime:ro \
+    --device=/dev/ttyUSB0 \
     --name "$CONTAINER_NAME" \
     --runtime nvidia \
     --user="admin" \
