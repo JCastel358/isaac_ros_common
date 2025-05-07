@@ -280,20 +280,23 @@ print_info "Running $CONTAINER_NAME"
 if [[ $VERBOSE -eq 1 ]]; then
     set -x
 fi
-docker run --runtime nvidia -it --privileged -e DISPLAY \
-    --network host \
-    -v /dev/:/dev/ \
-    -v /tmp/:/tmp/ \
-    --ipc=host \
-    ${DOCKER_ARGS[@]} \
-    -v $ISAAC_ROS_DEV_DIR:/workspaces/isaac_ros-dev \
-    -v /var/nvidia/nvcam/settings/:/var/nvidia/nvcam/settings/ \
-    -v /etc/localtime:/etc/localtime:ro \
-    -v /etc/systemd/system/zed_x_daemon.service:/etc/systemd/system/zed_x_daemon.service \
-    -v ${HOME}/zed_docker_ai/:/usr/local/zed/resources/ \
-    --name "$CONTAINER_NAME" \
-    --runtime nvidia \
-    --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh \
-    --workdir /workspaces/isaac_ros-dev \
-    $BASE_NAME \
-    /bin/bash
+
+docker run -it --privileged --runtime nvidia \
+  --restart unless-stopped \
+  -e DISPLAY=$DISPLAY \
+  --network host \
+  -v /dev/:/dev/ \
+  -v /tmp/:/tmp/ \
+  --ipc=host \
+  ${DOCKER_ARGS[@]} \
+  -v "$ISAAC_ROS_DEV_DIR":/workspaces/isaac_ros-dev \
+  -v /var/nvidia/nvcam/settings/:/var/nvidia/nvcam/settings/ \
+  -v /etc/localtime:/etc/localtime:ro \
+  -v /etc/systemd/system/zed_x_daemon.service:/etc/systemd/system/zed_x_daemon.service \
+  -v ${HOME}/zed_docker_ai/:/usr/local/zed/resources/ \
+  --name $CONTAINER_NAME \
+  --entrypoint /usr/local/bin/scripts/workspace-entrypoint.sh \
+  --workdir /workspaces/isaac_ros-dev \
+  $BASE_NAME \
+  /bin/bash
+

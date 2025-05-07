@@ -146,39 +146,59 @@ apt-get update && apt-get install -y \
 RUN python3 -m pip install -U \
 setuptools==65.7.0
 
-# Python3 (PIP)
-RUN python3 -m pip install -U \
-        argcomplete \
-        autopep8 \
-        Cython \
-        flake8 \
-        flake8-blind-except \
-        flake8-builtins \
-        flake8-class-newline \
-        flake8-comprehensions \
-        flake8-deprecated \
-        flake8-docstrings \
-        flake8-import-order \
-        flake8-quotes \
-        gpustat==0.6.0 \
-        importlib_resources \
-        networkx \
-        ninja \
-        "numpy>=1.24.4,<2" \
-        numpy-quaternion \
-        onnx \
-        pydocstyle \
-        pymongo \
-        pyyaml \
-        "scipy>=1.7.0" \
-        scikit-image \
-        scikit-learn \
-        "setuptools_scm>=6.2" \
-        tqdm \
-        trimesh \
-        "warp-lang>=0.9.0" \
-        wheel \
-        "yourdfpy>=0.0.53"
+# ────────────────────────────────────────────────────────────────
+#  Python packages – split in two passes to avoid the
+#  scikit-build-core × packaging 24.* clash seen with trimesh,
+#  manifold3d, mapbox_earcut, etc.
+# ────────────────────────────────────────────────────────────────
+
+# 1️⃣  Fast, pure-Python (or wheel) deps – nothing that requires scikit-build
+RUN python3 -m pip install --no-cache-dir -U \
+    argcomplete \
+    autopep8 \
+    Cython \
+    flake8 \
+    flake8-blind-except \
+    flake8-builtins \
+    flake8-class-newline \
+    flake8-comprehensions \
+    flake8-deprecated \
+    flake8-docstrings \
+    flake8-import-order \
+    flake8-quotes \
+    gpustat==0.6.0 \
+    importlib_resources \
+    networkx \
+    ninja \
+    "numpy>=1.24.4,<2" \
+    numpy-quaternion \
+    onnx \
+    pydocstyle \
+    pymongo \
+    pyyaml \
+    "scipy>=1.7.0" \
+    scikit-image \
+    scikit-learn \
+    "setuptools_scm>=6.2" \
+    tqdm \
+    wheel
+
+# 2️⃣  Upgrade the build backend so it *is* compatible with packaging 24
+RUN python3 -m pip install --no-cache-dir -U \
+    scikit-build-core==0.11.1 \
+    packaging==24.2
+
+# 3️⃣  C++/cython projects that used to break – install them
+#     with build-isolation disabled so they use the new backend
+RUN python3 -m pip install --no-cache-dir --no-build-isolation -U \
+    trimesh \
+    "warp-lang>=0.9.0" \
+    "yourdfpy>=0.0.53" \
+    opentelemetry-api==1.28.1 \
+    opentelemetry-sdk==1.28.1 \
+    opentelemetry-exporter-otlp
+# ────────────────────────────────────────────────────────────────
+
 
 # Add MQTT binaries and libraries
 RUN --mount=type=cache,target=/var/cache/apt \
@@ -363,14 +383,14 @@ ENV LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/tritonserver/lib"
 # Install boost version >= 1.78 for boost::span
 # Current libboost-dev apt packages are < 1.78, so install from tar.gz
 RUN --mount=type=cache,target=/var/cache/apt \
-    wget -O /tmp/boost.tar.gz \
-    https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.gz \
-    && (cd /tmp && tar xzf boost.tar.gz) \
-    && cd /tmp/boost_1_80_0 \
-    && ./bootstrap.sh --prefix=/usr \
-    && ./b2 install \
-    && rm -rf /tmp/boost*
-
+    BOOST_VER=1.80.0 \
+ && wget -qO /tmp/boost.tar.gz \
+      "https://downloads.sourceforge.net/project/boost/boost/${BOOST_VER}/boost_$(echo ${BOOST_VER} | tr . _).tar.gz" \
+ && mkdir /tmp/boost && tar -xzf /tmp/boost.tar.gz -C /tmp/boost --strip-components=1 \
+ && cd /tmp/boost \
+ && ./bootstrap.sh --prefix=/usr \
+ && ./b2 -j"$(nproc)" install \
+ && rm -rf /tmp/boost*
 
 # Install jtop
 RUN python3 -m pip install -U \
